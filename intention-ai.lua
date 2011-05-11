@@ -562,7 +562,16 @@ function SmartAI:printObjective()
         end
 end
 
-function SmartAI:getPreferedActions()
+function SmartAI:getPreferedActions(player)
+    local friendly=self:isFriend(player)
+    local hostile=self:isEnemy(player)
+    
+    if friendly then
+    end
+       
+
+    if hostile then 
+    end
 end
 
 --return nil if there are more than one possible roles for the remainning unknown characters
