@@ -46,7 +46,8 @@ sgs.ai_skill_use["@tianxiang"]=function(self, data)
 		end
 	end
 	
-	if target and friend_lost_hp < 2 and target:getHp() > 2 and (target:hasSkill("yiji") or target:hasSkill("jianxiong") or target:hasSkill("fangzhu")) then
+	if target and friend_lost_hp < 2 and target:getHp() > 2 and 
+		(target:hasSkill("yiji") or target:hasSkill("jianxiong") or target:hasSkill("fangzhu") or target:hasSkill("rende")) then
 		local cards = self.player:getCards("h")
         cards=sgs.QList2Table(cards)
         for _,card in ipairs(cards) do

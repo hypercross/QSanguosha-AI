@@ -408,7 +408,7 @@ lijian_skill.name="lijian"
 table.insert(sgs.ai_skills,lijian_skill)
 lijian_skill.getTurnUseCard=function(self)
 	if self.lijian_used then
-		return nil
+		return 
 	end
 	if not self.player:isNude() then
 		local card
@@ -466,7 +466,6 @@ sgs.ai_skill_use_func["LijianCard"]=function(card,use,self)
 			end
 		end
 		if friend_maxSlash then
-			self:log("found!")
 			local safe = false
 			if (first:hasSkill("ganglie") or first:hasSkill("fankui") or first:hasSkill("enyuan")) then
 				if (first:getHp()<=1 and first:getHandcardNum()==0) then safe=true end
@@ -506,12 +505,10 @@ sgs.ai_skill_use_func["LijianCard"]=function(card,use,self)
 			second = males[2]
 			local lord = self.room:getLord()
 			if (first:getHp()<=1) then
-				if self.player:isLord() then
-					self:log("Diaochan is the lord!")
+				if self.player:isLord() or isRolePredictable() then 
 					local friend_maxSlash = findFriend_maxSlash(self,first)
 					if friend_maxSlash then second=friend_maxSlash end
-				end
-				if (lord:getGeneral():isMale()) and (not lord:hasSkill("wuyan")) then
+				elseif (lord:getGeneral():isMale()) and (not lord:hasSkill("wuyan")) then 
 					if (self.role=="rebel") and (not first:isLord()) then
 						second = lord
 					else
@@ -540,42 +537,116 @@ end
 
 
 
-
 local liubei_ai=SmartAI:newSubclass "liubei"
 liubei_ai:setOnceSkill("rende")
 --liubei_ai:setOnceSkill("rendesecond")
 
 function liubei_ai:activate(use)
 	
-	
-    if ((self.player:getHandcardNum()+2>=self.player:getHp()) or self.player:isWounded()) and not self.rendesecond_used then  
-		if self.player:getHandcardNum()==0 then return end
-		self:sort(self.friends_noself,"defense")
+    if self.player:getHandcardNum() >= 2 or ((not self.rendesecond_used) and self.rende_used) then
+		local cards = self.player:getHandcards()
 		for _, friend in ipairs(self.friends_noself) do
-			if (friend:getHandcardNum()<2) or (friend:getHandcardNum()<friend:getHp()+1) or self.player:isWounded() then
-				--local card_id = self:getCardRandomly(self.player, "h")
-				
-				local card_id = self:getCardRandomly(self.player, "h")
-				use.card = sgs.Card_Parse("@RendeCard=" .. card_id)
-				use.to:append(friend)
-                if self.rende_used 
-					then self.rendesecond_used=true 
-					return
-				else
-					self.rende_used=true
+			if friend:getHp() == 1 then
+				for _, hcard in sgs.qlist(cards) do
+					if hcard:inherits("Analeptic") or hcard:inherits("Peach") then 
+						use.card = sgs.Card_Parse("@RendeCard=" .. hcard:getId())
+						use.to:append(friend)
+						if self.rende_used 
+							then self.rendesecond_used=true 
+						else
+							self.rende_used=true
+						end
+					end
 				end
 			end
+			if friend:hasSkill("paoxiao") then
+				for _, hcard in sgs.qlist(cards) do
+					if hcard:inerhits("Slash") then 
+						use.card = sgs.Card_Parse("@RendeCard=" .. hcard:getId())
+						use.to:append(friend)
+						if self.rende_used 
+							then self.rendesecond_used=true 
+						else
+							self.rende_used=true
+						end
+					end
+				end
+			elseif friend:hasSkill("qingnang") and friend:getHp() < 2 and friend:getHandcardNum() < 1 then
+				for _, hcard in sgs.qlist(cards) do
+					if hcard:isRed() and not (hcard:inherits("ExNihilo") or hcard:inherits("Peach")) then 
+						use.card = sgs.Card_Parse("@RendeCard=" .. hcard:getId())
+						use.to:append(friend)
+						if self.rende_used 
+							then self.rendesecond_used=true 
+						else
+							self.rende_used=true
+						end
+					end
+				end
+			elseif friend:hasSkill("jizhi") then
+				for _, hcard in sgs.qlist(cards) do
+					if hcard:getTypeId() == sgs.Card_Trick then 
+						use.card = sgs.Card_Parse("@RendeCard=" .. hcard:getId())
+						use.to:append(friend)
+						if self.rende_used 
+							then self.rendesecond_used=true 
+						else
+							self.rende_used=true
+						end
+					end
+				end
+			elseif friend:hasSkill("guose") then
+				for _, hcard in sgs.qlist(cards) do
+					if hcard:getTypeId() == sgs.Card_Diamond then 
+						use.card = sgs.Card_Parse("@RendeCard=" .. hcard:getId())
+						use.to:append(friend)
+						if self.rende_used 
+							then self.rendesecond_used=true 
+						else
+							self.rende_used=true
+						end
+					end
+				end
+			elseif friend:hasSkill("leiji") then
+				for _, hcard in sgs.qlist(cards) do
+					if hcard:getTypeId() == sgs.Card_Spade then 
+						use.card = sgs.Card_Parse("@RendeCard=" .. hcard:getId())
+						use.to:append(friend)
+						if self.rende_used 
+							then self.rendesecond_used=true 
+						else
+							self.rende_used=true
+						end
+					end
+				end
+			elseif friend:hasSkill("xiaoji") then
+				for _, hcard in sgs.qlist(cards) do
+					if hcard:inherits("EquipCard") then 
+						use.card = sgs.Card_Parse("@RendeCard=" .. hcard:getId())
+						use.to:append(friend)
+						if self.rende_used 
+							then self.rendesecond_used=true 
+						else
+							self.rende_used=true
+						end
+					end
+				end
+			end
+			
 		end
 	end
 	
 	if (not use:isValid()) and (self.player:getHandcardNum()>self.player:getHp()) then 
 		for _, friend in ipairs(self.friends_noself) do
-		    local card_id = self:getCardRandomly(self.player, "h")
-		    use.card = sgs.Card_Parse("@RendeCard=" .. card_id)
-            use.to:append(friend)
-            return
+			if (friend:getHandcardNum()<2) or (friend:getHandcardNum()<friend:getHp()+1) or self.player:isWounded() then
+				local card_id = self:getCardRandomly(self.player, "h")
+				use.card = sgs.Card_Parse("@RendeCard=" .. card_id)
+				use.to:append(friend)
+				return
+			end
         end
     end
+	
 	super.activate(self, use)
 end
 

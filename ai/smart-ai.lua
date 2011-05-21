@@ -272,9 +272,10 @@ function SmartAI:updateLoyalTarget(player)
 if self.role=="rebel" then return end
     if (self:objectiveLevel(player)>4) then
         if not sgs.loyal_target then sgs.loyal_target=player 
+		elseif self:getEquipNumber(sgs.loyal_target)>self:getEquipNumber(player) then sgs.loyal_target=player 
         elseif (sgs.loyal_target:getHp()>1) and (getDefense(player)<=3) then sgs.loyal_target=player 
         elseif (sgs.loyal_target:getHandcardNum()>0) and (player:getHandcardNum()==0) then sgs.loyal_target=player 
-        elseif (sgs.ai_chaofeng[player:getGeneralName()] or 0)>(sgs.ai_chaofeng[sgs.loyal_target:getGeneralName()] or 0) then sgs.loyal_target=player 
+        elseif (sgs.ai_chaofeng[player:getGeneralName()] or 0)<(sgs.ai_chaofeng[sgs.loyal_target:getGeneralName()] or 0) then sgs.loyal_target=player 
         elseif (sgs.loyal_target:getArmor()) and (not player:getArmor()) then sgs.loyal_target=player 
         end
     end
@@ -307,24 +308,38 @@ function SmartAI:objectiveLevel(player)
     
     local players=self.room:getOtherPlayers(self.player)
     players=sgs.QList2Table(players)
+	
+	
+    local hasRebel=false
+    for _,oplayer in ipairs(players) do
+        if oplayer:getRole()=="rebel" then hasRebel=true break end
+    end
         
     if self.role=="lord" then
     
-        local hasRebel=false
-        for _,player in ipairs(players) do
-            if player:getRole()=="rebel" then hasRebel=true break end
-        end
-        
+        if #players == 1  then return 5 end 
+		
         if not hasRebel then 
         
             local name=player:objectName()
-        
-            self:sort(players,"defense")
-            if (players[#players]:objectName()==name) then modifier=-10
-            elseif players[1]:objectName()==name and ((sgs.ai_anti_lord[name] or 0)-2)<=(sgs.ai_lord_tolerance[name] or 0) then modifier=10
-            else modifier=2
-            end
+			if player:getRole() == "renegade" then return 5 else return -2 end
+			
+			
+--            self:sort(players,"defense")
+--            if (players[#players]:objectName()==name) then modifier=-10
+--            elseif players[1]:objectName()==name and ((sgs.ai_anti_lord[name] or 0)-2)<=(sgs.ai_lord_tolerance[name] or 0) then modifier=10
+--            else modifier=2
         end
+		
+		local hasLoyal=false
+		for _, oplayer in ipairs(players) do
+			if oplayer:getRole() == "loyalist" then hasLoyal=true break end
+		end
+		
+		if not hasLoyal then 
+			if player:getRole() == "renegade" then return -1 else return 5 end
+		end
+		
         if sgs.ai_explicit[player:objectName()]=="rebel" then return 5-modifier
         elseif sgs.ai_explicit[player:objectName()]=="rebelish" then return 5-modifier
         elseif sgs.ai_explicit[player:objectName()]=="loyalist" then return -2
@@ -336,6 +351,11 @@ function SmartAI:objectiveLevel(player)
             then return 3
         else return 0 end
     elseif self.role=="loyalist" then
+		
+		if not hasRebel then
+			if player:getRole() == "renegade" then return 5 else return -2 end
+		end
+		
         if sgs.ai_explicit[player:objectName()]=="rebel" then return 5-modifier
         elseif sgs.ai_explicit[player:objectName()]=="rebelish" then return 5-modifier
         elseif player:isLord() then return -2
@@ -362,35 +382,51 @@ function SmartAI:objectiveLevel(player)
         
         if #players==1 then return 5 end
         --if (#players==2) and player:isLord() then return 0 end
-        if player:isLord() then return -2
-        else
-
-            local rnum=0
-            local rval=0
-            for _, aplayer in ipairs (players) do
-                if aplayer:getRole()=="rebel" then 
-                    rnum=rnum+getDefense(aplayer)
-                    rval=rval+1
-                elseif not aplayer:isLord() then rnum=rnum-getDefense(aplayer)
-                else
-                    rnum=rnum-getDefense(aplayer)*1.5
-                end
-            end
-            
-            local loyal_thresh=-2*#players
-            
-            if (rnum>loyal_thresh) or (self.room:getLord():getHp()<=rval) then
-                self.role="loyalist"
-                local level=self:objectiveLevel(player)
-                self.role="renegade"
-                return level
-            else
-                self.role="rebel"
-                local level=self:objectiveLevel(player)
-                self.role="renegade"
-                return level
-            end
+		
+        if not hasRebel then 
+			if player:isLord() then return 4 
+			else return 5 end
+		end
+		
+		local rebel_num = 0
+		local loyalish_num = 0
+        for _, aplayer in ipairs (players) do
+            if aplayer:getRole()=="rebel" then 
+                rebel_num = rebel_num + 1
+			else
+				loyalish_num = loyalish_num + 1
+			end
         end
+		if rebel_num > loyalish_num then 
+			if player:getRole() == "rebel" then return 5 else return -1 end
+		elseif rebel_num < loyalish_num then
+			if player:getRole() == "rebel" then return -1 
+			elseif player:getRole() == "loyalist" then return 5
+			else return 3
+			end
+		else
+			local loyalish_count, rebel_count = 0, 0
+			local loyalish_hp, rebel_hp = 0, 0
+			for _, aplayer in ipairs(players) do
+				if aplayer:getRole() == "rebel" then 
+					rebel_hp = rebel_hp + aplayer:getHp()
+					rebel_count = rebel_count + 1
+				else
+					loyalish_hp = loyalish_hp + aplayer:getHp()
+					loyalish_count = loyalish_count + 1
+				end
+			end
+			if loyalish_hp/loyalish_count <= rebel_hp/rebel_count then
+				if player:getRole() == "rebel" then return 5
+				else return 3 end
+			else
+				if player:getRole() == "rebel" then return 3
+				else 
+					if player:isLord() then return 0 else return 5 end
+				end
+			end
+		end
+		
     end
     return 1
 end
@@ -734,6 +770,15 @@ function SmartAI:getJink()																		---------add no use
     return nil
 end
 
+function SmartAI:getEquipNumber(player)
+	local equips = player:getEquips()
+	local index = 0
+	for _, equip in sgs.qlist(equips) do
+		index = index + 1
+	end
+	return index
+end
+
 function SmartAI:searchForAnaleptic(use,enemy,slash)
 
     
@@ -949,6 +994,7 @@ function SmartAI:exclude(players, card)
 end
 
 function SmartAI:useCardDismantlement(dismantlement, use)
+	if self.player:hasSkill("wuyan") then return end
 	if (not self.has_wizard) and self:hasWizard(self.enemies) then
 		-- find lightning
 		local players = self.room:getOtherPlayers(self.player)
@@ -1001,7 +1047,9 @@ end
 
 -- very similar with SmartAI:useCardDismantlement
 function SmartAI:useCardSnatch(snatch, use)
-        if (not self.has_wizard) and self:hasWizard(self.enemies)  then
+	if self.player:hasSkill("wuyan") then return end
+	
+    if (not self.has_wizard) and self:hasWizard(self.enemies)  then
 		-- find lightning
 		local players = self.room:getOtherPlayers(self.player)
 		players = self:exclude(players, snatch)
@@ -1048,6 +1096,7 @@ function SmartAI:useCardSnatch(snatch, use)
 end
 
 function SmartAI:useCardFireAttack(fire_attack, use)
+	if self.player:hasSkill("wuyan") then return end
 	local lack = {
 		spade = true,
 		club = true,
@@ -1208,6 +1257,7 @@ function SmartAI:getJinkNumber(player)
 end
 
 function SmartAI:useCardDuel(duel, use)
+	if self.player:hasSkill("wuyan") then return end
 	self:sort(self.enemies,"defense")
 	local enemies = self:exclude(self.enemies, duel)
 	for _, enemy in ipairs(enemies) do
@@ -1268,6 +1318,7 @@ function SmartAI:useCardIndulgence(card, use)
 end
 
 function SmartAI:useCardCollateral(card, use)
+	if self.player:hasSkill("wuyan") then return end
 	self:sort(self.enemies,"threat")
 
 --	for _, enemy in ipairs(self.enemies) do
@@ -1432,6 +1483,7 @@ end
 
 function SmartAI:useTrickCard(card, use)
 	if card:inherits("AOE") then
+		if self.player:hasSkill("wuyan") then return end
 		local good, bad = 0, 0
 		for _, friend in ipairs(self.friends_noself) do
 			if self:aoeIsEffective(card, friend) then
@@ -1789,9 +1841,7 @@ function SmartAI:getUsePriority(card)
     end
 		if self.player:hasSkill("wuyan") then
 			if card:inherits("Slash") then v = 4
-			elseif card:inherits("Snatch") then v = 1.0
-			elseif card:inherits("Dismantlement") then v = 1.0
-			elseif card:inherits("Collateral") then v = 1.0
+			elseif card:inherits("Collateral") or card:inherits("Dismantlement") or card:inherits("Snatch") or card:inherits("IronChain") then v = 1.0
 			end
 			if v then return v else return sgs.ai_use_priority[class_name] end
 		end
@@ -1801,6 +1851,9 @@ function SmartAI:getUsePriority(card)
 			end
 			if v then return v else return sgs.ai_use_priority[class_name] end
 		end	
+		if self.player:hasSkill("rende") then
+			if card:inherits("ExNihio") then v = 5.9 end
+		end
         return sgs.ai_use_priority[class_name] or 0
 end
 
@@ -2108,6 +2161,7 @@ function SmartAI:askForCard(pattern,prompt)
 			for _, card in sgs.qlist(cards) do
 				if card:getSuit() == sgs.Card_Heart or card:getSuit() == sgs.Card_Spade then
 					local players = self.room:getOtherPlayers(self.player)
+					players = QList2Table(players)
 					for _, other in ipairs(players) do
 						if ((other:getLostHp() == 0 or other:getHp() == 1) and self.player:isEmeny(other)) or 
 							(other:getHandcardNum() <= 2 and other:getLostHp() < 2 and self.player:isFriend(other)) then	
