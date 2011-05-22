@@ -556,6 +556,7 @@ function liubei_ai:activate(use)
 						else
 							self.rende_used=true
 						end
+						return
 					end
 				end
 			end
@@ -569,6 +570,7 @@ function liubei_ai:activate(use)
 						else
 							self.rende_used=true
 						end
+						return
 					end
 				end
 			elseif friend:hasSkill("qingnang") and friend:getHp() < 2 and friend:getHandcardNum() < 1 then
@@ -581,6 +583,7 @@ function liubei_ai:activate(use)
 						else
 							self.rende_used=true
 						end
+						return
 					end
 				end
 			elseif friend:hasSkill("jizhi") then
@@ -593,6 +596,7 @@ function liubei_ai:activate(use)
 						else
 							self.rende_used=true
 						end
+						return
 					end
 				end
 			elseif friend:hasSkill("guose") then
@@ -605,6 +609,7 @@ function liubei_ai:activate(use)
 						else
 							self.rende_used=true
 						end
+						return
 					end
 				end
 			elseif friend:hasSkill("leiji") then
@@ -617,6 +622,7 @@ function liubei_ai:activate(use)
 						else
 							self.rende_used=true
 						end
+						return
 					end
 				end
 			elseif friend:hasSkill("xiaoji") then
@@ -629,6 +635,7 @@ function liubei_ai:activate(use)
 						else
 							self.rende_used=true
 						end
+						return
 					end
 				end
 			end

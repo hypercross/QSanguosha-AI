@@ -292,7 +292,7 @@ sgs.ai_skill_invoke["@guidao"]=function(self,prompt)
         fillCardSet(cardSet,"club",true)
         fillCardSet(cardSet,"diamond",true)
         fillCardSet(cardSet,"spade",false)
-		fillCardSet(cardSet,nil,nil,1,true)  -----м╛ио
+		fillCardSet(cardSet,nil,nil,1,true)  -----spade A
         for i=10,13 do 
             fillCardSet(cardSet,nil,nil,i,true)
         end
