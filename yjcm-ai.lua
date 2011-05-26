@@ -11,6 +11,9 @@ sgs.ai_skill_invoke.pojun = function(self, data)
 	end
 end
 
+--jiushi
+sgs.ai_skill_invoke.jiushi= true
+
 --jiejiu
 local jiejiu_skill={}
 jiejiu_skill.name="jiejiu"
@@ -95,6 +98,7 @@ sgs.ai_skill_playerchosen.xuanfeng_damage = function(self,targets)
 	for _, enemy in ipairs(self.enemies) do
 		if self.player:distanceTo(enemy)<=1 then return enemy end
 	end
+
 	return nil
 end
 
@@ -105,21 +109,21 @@ sgs.ai_skill_playerchosen.xuanfeng_slash = function(self,targets)
 		if not self:slashProhibit(slash ,enemy) then return enemy end
 	end
 --	self:log("unfound")
-	return nil
+	return self.enemys:at(math.random(0, targets:length() - 1))
 end
 
-local lingtong_ai = SmartAI:newSubclass "lingtong"
-lingtong_ai:setOnceSkill("xuanfeng")
-function lingtong_ai:activate(use)
-	local cards = self.player:getHandcards()
-	for _, card in sgs.qlist(cards) do
-		if card:inherits("EquipCard") then
-			use.card = card
-			return
-		end
-	end
-	super.activate(self, use)
-end
+-- local lingtong_ai = SmartAI:newSubclass "lingtong"
+-- lingtong_ai:setOnceSkill("xuanfeng")
+-- function lingtong_ai:activate(use)
+	-- local cards = self.player:getHandcards()
+	-- for _, card in sgs.qlist(cards) do
+		-- if card:inherits("EquipCard") then
+			-- use.card = card
+			-- return
+		-- end
+	-- end
+	-- super.activate(self, use)
+-- end
 
 --xuanhuo
 local fazheng_ai = SmartAI:newSubclass "fazheng"
@@ -185,34 +189,51 @@ function wuguotai_ai:activate(use)
 	local target
 	
 	if not self.ganlu_used then
-		local equips  = {}
+	
+		local has_xiaoji = false
+		local xiaoji_equip = 0
+		local sunshangxiang
 		for _, friend in ipairs(self.friends) do
-			if friend:hasSkill("xiaoji") and self:getEquipNumber(friend) > 0 then
-				for _, enemy in ipairs(self.enemies) do
-					
-					if ((self:getEquipNumber(enemy)-self:getEquipNumber(friend))<= lost_hp) or 
-						((self:getEquipNumber(friend)-self:getEquipNumber(enemy))<= lost_hp) then
-						if self:getEquipNumber(enemy) > enemy_equip then
-							target = enemy
-							enemy_equip = self:getEquipNumber(enemy)
-						end
-					end
-				end	
-			end	
+			if friend:hasSkill("xiaoji") then 
+				has_xiaoji = true
+				xiaoji_equip = self:getEquipNumber(friend)
+				sunshangxiang = friend
+				break 
+			end
 		end
-		
-		if target and enemy_equip > 0 then				
+		if has_xiaoji then
+			local max_equip, max_friend = 0
+			local min_equip, min_friend = 5
+		for _, friend in ipairs(self.friends) do
+			if not friend:hasSkill("xiaoji") then
+				if (self:getEquipNumber(friend) > max_equip) and (self:getEquipNumber(friend)-xiaoji_equip<=lost_hp) then 
+				max_equip = self:getEquipNumber(friend) 
+				max_friend = friend
+				elseif (self:getEquipNumber(friend) < min_equip) and (xiaoji_equip-self:getEquipNumber(friend)<=lost_hp) then 
+				min_equip = self:getEquipNumber(friend)
+				min_friend = friend
+				end
+			end
+		end
+	
+		local equips  = {}
+		if sunshangxiang and (max_equip~=0 or min_equip~=5) then 
 			use.card = sgs.Card_Parse("@GanluCard=.")
-			use.to:append(friend)
-			use.to:append(enemy)
-			self.ganlu_used = true
-			return
+			use.to:append(sunshangxiang)
+			if (max_equip ~= 0) and ((max_equip-self:getEquipNumber(sunshangxiang))>=0) then
+				use.to:append(max_friend)
+				self.ganlu_used = true
+				return
+			elseif(min_equip ~= 5) and ((self:getEquipNumber(sunshangxiang)-min_equip)>=0) then
+				use.to:append(min_friend)
+				self.ganlu_used = true
+				return
+			end
 		end	
 		
 		for _, friend in ipairs(self.friends) do
-			if self:getEquipNumber(friend) > 0 then
 				for _, enemy in ipairs(self.enemies) do
-					if not enemy:hasSkill("xiaoji") and self:getEquipNumber(enemy) > 0 then 
+					if not enemy:hasSkill("xiaoji") then 
 						if ((self:getEquipNumber(enemy)-self:getEquipNumber(friend))<= lost_hp) and 
 							(self:getEquipNumber(enemy)>=self:getEquipNumber(friend))then
 							use.card = sgs.Card_Parse("@GanluCard=.")
@@ -245,43 +266,40 @@ function xushu_ai:activate(use)
 	for _, ispeach in sgs.qlist(find_peach) do
 		if ispeach:inherits("Peach") then hasPeach=true break end
 	end
-
-	if not self.jujian_used and self.player:isWounded() and self.player:getHandcardNum() > 2 and not hasPeach then
-		
+	
+	local trick_num, basic_num, equip_num = 0, 0, 0
+	if not hasPeach and self.player:isWounded() and self.player:getHandcardNum() >=3 and not self.jujian_used then 
 		local cards = self.player:getHandcards()
 		cards=sgs.QList2Table(cards)
-		local club, spade, diamond, heart = true, true, true, true
 		self:sortByUseValue(cards, true)
+		for _, card in ipairs(cards) do 
+			if card:getTypeId() == sgs.Card_Trick and not card:inherits("ExNihilo") then trick_num = trick_num + 1
+			elseif card:getTypeId() == sgs.Card_Basic then basic_num = basic_num + 1
+			elseif card:getTypeId() == sgs.Card_Equip then equip_num = equip_num + 1
+			end
+		end
+		local result_class
+		if trick_num >= 3 then result_class = "TrickCard"
+		elseif equip_num >= 3 then result_class = "EquipCard"
+		elseif basic_num >= 3 then result_class = "BasicCard"
+		end
 		for _, friend in ipairs(self.friends_noself) do
 			if (friend:getHandcardNum()<2) or (friend:getHandcardNum()<friend:getHp()+1) then
-				for _, card in ipairs(cards) do 
-					if card:getSuit() == sgs.Card_Club and club then 
-						table.insert(abandon_handcard, card:getEffectiveId())
+				for _, fcard in ipairs(cards) do 
+					if fcard:inherits(result_class) and not fcard:inherits("ExNihilo") then
+						table.insert(abandon_handcard, fcard:getId())
 						index = index + 1
-						club = false
-					elseif card:getSuit() == sgs.Card_Spade and spade then
-						table.insert(abandon_handcard, card:getEffectiveId())
-						index = index + 1
-						spade = false
-					elseif card:getSuit() == sgs.Card_Diamond and diamond then
-						table.insert(abandon_handcard, card:getEffectiveId())
-						index = index + 1
-						diamond = false
-					elseif card:getSuit() == sgs.Card_Heart and heart then
-						table.insert(abandon_handcard, card:getEffectiveId())
-						index = index + 1
-						heart = false
 					end
 					if index == 3 then break end
 				end
-				if index == 3 then 
-					use.to:append(friend)
-					use.card = sgs.Card_Parse("@JujianCard=" .. table.concat(abandon_handcard, "+"))
-					self.jujian_used = true
-				end	
-				break
 			end
 		end
+		if index == 3 then 
+			use.to:append(friend)
+			use.card = sgs.Card_Parse("@JujianCard=" .. table.concat(abandon_handcard, "+"))
+			self.jujian_used = true
+			return 
+		end	
 	
 	
 	elseif not self.jujian_used then
@@ -295,7 +313,8 @@ function xushu_ai:activate(use)
 				for _, card in ipairs(cards) do
 					if #abandon_handcard == 3 then break end
 					if not card:inherits("Nullification") and not card:inherits("EquipCard") and 
-						not card:inherits("Peach") and not card:inherits("Jink") then
+						not card:inherits("Peach") and not card:inherits("Jink") and 
+						not card:inherits("Indulgence") and not card:inherits("SupplyShortage") then
 						table.insert(abandon_handcard, card:getId())
 						index = 5
 					elseif card:inherits("Slash") and slash_num > 1 then
@@ -327,67 +346,141 @@ end
 
 
 --mingce
-local chengong_ai = SmartAI:newSubclass "chengong"
-
-function chengong_ai:activate(use)
-	super.activate(self, use)
-	if use:isValid() and self:getSlashNumber(self.player) > 1 then
-		return
-	end
+mingce_skill={}
+mingce_skill.name="mingce"
+table.insert(sgs.ai_skills,mingce_skill)
+mingce_skill.getTurnUseCard=function(self)
+	local card
 	
-    if self.mingce_used then return nil end
-		
-	local card, target
-		
 	local hcards = self.player:getCards("h")
 	hcards = sgs.QList2Table(hcards)
+	self:sortByUseValue(hcards, true)
+
 		for _, hcard in ipairs(hcards) do
 		if hcard:inherits("Slash") or hcard:inherits("EquipCard") then
 			card = hcard
 			break
 		end
-	end
-	
-	if self:getEquipNumber(self.player) > 0 and not card then
-		if self.player:getArmor() and self.player:getArmor():objectName() == "silver_lion" and self.player:isWounded() then
-			card = self.player:getArmor()
 		end
-		local ecards = self.player:getCards("e")
-		ecards = sgs.QList2Table(ecards)
-		for _, ecard in ipairs(ecards) do
-			if not (ecard:inherits("Armor") and card:inherits("DefensiveHorse")) then
-				card = ecard
-				break
-			end
-		end
-	end	
-	
-	
-	if card then 
-		local friends = self.friends_noself
-		for _, friend in ipairs(self.friends_noself) do
-			if friend:getHp() <= 2 and friend:getHandcardNum() < 2 then
-				target = friend
-				break
-			end
-		end
-		if not target then target = friends[1] end
+
+	if card then
+		card = sgs.Card_Parse("@MingceCard=" .. card:getEffectiveId()) 
+		return card
 	end
-	if card and target then
-		use.card = sgs.Card_Parse("@MingceCard=" .. card:getId()) 
-		use.to:append(target)
-		self.mingce_used=true
-		return
-	end
-	
+
 	return nil
+	
+end
+
+sgs.ai_skill_use_func["MingceCard"]=function(card,use,self)
+	if self.mingce_used then return end
+	local target
+	self:sort(self.friends_noself, "defense")
+	local friends = self.friends_noself
+	for _, friend in ipairs(friends) do
+		if friend:getHp() <= 2 and friend:getHandcardNum() < 2 then
+			target = friend
+			break
+		end
+	end
+
+	if not target then
+		local maxAttackRange=0
+		for _, friend in ipairs(friends) do
+			if friend:getAttackRange() > maxAttackRange then
+				maxAttackRange = friend:getAttackRange()
+				target = friend
+			end
+		end
+	end
+
+--	if not target then target = self.friends_noself[1] end
+
+	if target then
+		use.card=card
+		if use.to then
+			use.to:append(target)
+			self.mingce_used=true
+		end
+	end
 end
 
 sgs.ai_skill_choice.mingce = function(self , choices)
     if self.player:getHandcardNum()<=2 then return "draw" end
 	if self.player:getHp()<=1 then return "draw" end
 	for _,enemy in ipairs(self.enemies) do
-		if self.player:canSlash(enemy) then return "use" end
+		if self.player:canSlash(enemy) and not self:slashProhibit(slash ,enemy) then return "use" end
 	end
     return "draw"
 end
+
+sgs.ai_skill_playerchosen.mingce = function(self,targets)
+	local slash = sgs.Card_Parse(("slash[%s:%s]"):format(sgs.Card_NoSuit, 0))
+	local targetlist=sgs.QList2Table(targets)
+
+	self:sort(targetlist, "defense")
+	for _, target in ipairs(targetlist) do
+		if self:isEnemy(target) and self:canSlash(target) and not self:slashProhibit(slash ,target) then
+		--self:log("Find!")
+		return target
+		end
+	end
+	--self:log("unfound")
+	return nil
+end
+
+-- local chengong_ai = SmartAI:newSubclass "chengong"
+
+-- function chengong_ai:activate(use)
+	-- super.activate(self, use)
+	-- if use:isValid() and self:getSlashNumber(self.player) > 1 then
+		-- return
+	-- end
+	
+    -- if self.mingce_used then return nil end
+		
+	-- local card, target
+		
+	-- local hcards = self.player:getCards("h")
+	-- hcards = sgs.QList2Table(hcards)
+		-- for _, hcard in ipairs(hcards) do
+		-- if hcard:inherits("Slash") or hcard:inherits("EquipCard") then
+			-- card = hcard
+			-- break
+		-- end
+	-- end
+	
+	-- if self:getEquipNumber(self.player) > 0 and not card then
+		-- if self.player:getArmor() and self.player:getArmor():objectName() == "silver_lion" and self.player:isWounded() then
+			-- card = self.player:getArmor()
+		-- end
+		-- local ecards = self.player:getCards("e")
+		-- ecards = sgs.QList2Table(ecards)
+		-- for _, ecard in ipairs(ecards) do
+			-- if not (ecard:inherits("Armor") and card:inherits("DefensiveHorse")) then
+				-- card = ecard
+				-- break
+			-- end
+		-- end
+	-- end	
+	
+	
+	-- if card then 
+		-- local friends = self.friends_noself
+		-- for _, friend in ipairs(self.friends_noself) do
+			-- if friend:getHp() <= 2 and friend:getHandcardNum() < 2 then
+				-- target = friend
+				-- break
+			-- end
+		-- end
+		-- if not target then target = friends[1] end
+	-- end
+	-- if card and target then
+		-- use.card = sgs.Card_Parse("@MingceCard=" .. card:getId()) 
+		-- use.to:append(target)
+		-- self.mingce_used=true
+		-- return
+	-- end
+	
+	-- return nil
+-- end

@@ -123,6 +123,7 @@ sgs.ai_chat.leiji_jink=
 "哈我有闪"
 }
 
+--quhu
 sgs.ai_chat.quhu=
 {
 "出大的！",
@@ -130,6 +131,7 @@ sgs.ai_chat.quhu=
 "哟，拼点吧"
 }
 
+--wusheng to yizhong
 sgs.ai_chat.wusheng_yizhong=
 {
 "诶你技能是啥来着？",
@@ -137,6 +139,7 @@ sgs.ai_chat.wusheng_yizhong=
 "咦你的技能呢？"
 }
 
+--salvageassault
 sgs.ai_chat.daxiang=
 {
 "好多大象啊！",
@@ -144,6 +147,7 @@ sgs.ai_chat.daxiang=
 "内牛满面啊敢不敢少来点AOE"
 }
 
+--xiahoudun
 sgs.ai_chat.ganglie_death=
 {
 "菊花残，满地伤。。。"
